@@ -14,5 +14,5 @@ a= len(dict_)
 week= False
 decimal= 0.1 if week is False else 1
 total_hours= 0.0
-
-print(int(total_hours))
+a= None
+print(f"{a}, dkmwqdq")
