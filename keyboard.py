@@ -41,9 +41,22 @@ log_= InlineKeyboardButton('Log action', callback_data='foc_add')
 log_button.add(log_)
 
 add_friends_button = InlineKeyboardMarkup(row_width=1)
-friend= InlineKeyboardButton('Add friend', callback_data='friend')
+friend= InlineKeyboardButton('Add friend', callback_data='friend_add')
 
 add_friends_button.add(friend)
+
+
+friends_menu = InlineKeyboardMarkup(row_width=1)
+show= InlineKeyboardButton('Show stats of my friends', callback_data='friend_show')
+add_friend= InlineKeyboardButton('Add one more friend', callback_data='friend_add')
+
+friends_menu.add(add_friend, show)
+
+add_friends_menu = InlineKeyboardMarkup(row_width=1)
+reject= InlineKeyboardButton('❌ Reject', callback_data='Reject')
+add_friend_true= InlineKeyboardButton('Add one more friend', callback_data='to_add')
+
+add_friends_menu.add(add_friend_true, reject)
 
 def not_today_menu(date):
     not_today = InlineKeyboardMarkup(row_width=1)
@@ -67,12 +80,14 @@ def stat_menu(day, split, list_actions):
 
     return stat.add(period, spliting, activity)
 
-def choose_action_menu(list_actions):
+def choose_action_menu(list_actions, user_id):
     choose_action = InlineKeyboardMarkup(row_width=2)
     
     done= InlineKeyboardButton('Done', callback_data='choose_done')
     reset= InlineKeyboardButton('Reset', callback_data='choose_reset')
-    actions= ['Work', 'second', 'third', 'fourthwert1234567890', 'fiveth']
+    actions= []
+    for name in db.inf_about_action(user_id=user_id):
+        actions.append(name[0])
     actions.sort(key=str.__len__)
     for action in actions:
         if list(list_actions).__contains__(action):

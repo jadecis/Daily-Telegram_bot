@@ -14,7 +14,7 @@ class Databae():
         
     def stat_today(self, user_id, date):
         with self.connection:
-            res= self.cursor.execute("SELECT `action`, `hour`, `point`, `category`, `duration` FROM logs WHERE user_id= ? and `date` = ?", (user_id, date, )).fetchall()
+            res= self.cursor.execute("SELECT `action`, `hour`, `point`, `category`, `duration` FROM logs WHERE user_id= ? and `date` = ?", (user_id, date, )).fetchone()
             return res
         
     def first_log(self, user_id):
@@ -73,4 +73,29 @@ class Databae():
     def get_points_atweek(self, user_id):
         with self.connection:
             res= self.cursor.execute("SELECT SUM(point) FROM logs WHERE user_id= ? and (date >= ? and date < ?)", (user_id, (dt.today()- timedelta(days=7)), dt.today())).fetchone()
+            return res
+        
+    def get_friends(self, user_id):
+        with self.connection:
+            res= self.cursor.execute("SELECT friends FROM users_info WHERE user_id= ?", (user_id, )).fetchone()
+            return res
+        
+    def find_id(self, user_name):
+        with self.connection:
+            res= self.cursor.execute("SELECT user_id FROM users_info WHERE user_name= ?", (user_name, )).fetchone()
+            return res
+        
+    def get_short_stat(self, user_id, first_date, second_date):
+        with self.connection:
+            res= self.cursor.execute("SELECT SUM(hour), SUM(point) FROM logs WHERE user_id=? and (date >= ? and date < ?)", (user_id, first_date, second_date, )).fetchone()
+            return res
+        
+    def get_user_name(self, user_id):
+        with self.connection:
+            res= self.cursor.execute("SELECT user_name FROM users_info WHERE user_id= ?", (user_id, )).fetchone()
+            return res
+        
+    def stat_short_today(self, user_id):
+        with self.connection:
+            res= self.cursor.execute("SELECT `hour`, `point` FROM logs WHERE user_id= ? and `date` = ?", (user_id, dt.today(), )).fetchone()
             return res

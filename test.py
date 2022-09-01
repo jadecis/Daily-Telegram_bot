@@ -1,4 +1,5 @@
 from db import Databae
+from datetime import date as dt
 
 db= Databae('database.db')
 
@@ -14,5 +15,5 @@ a= len(dict_)
 week= False
 decimal= 0.1 if week is False else 1
 total_hours= 0.0
-a= None
-print(f"{a}, dkmwqdq")
+a= 5563657379
+print(db.stat_today(user_id=5563657379, date=dt.today()))

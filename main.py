@@ -1,6 +1,4 @@
 from email import message
-from os import stat
-from urllib.parse import ParseResultBytes
 from db import Databae
 import config as cfg
 import keyboard as nav
@@ -25,6 +23,7 @@ class Focus(StatesGroup):
     Q2= State()
     Q3= State()
     Q4= State()
+    Q5= State()
     
 html= types.ParseMode.HTML#<- &lt; >- &gt; &- &amp; 
 mark= types.ParseMode.MARKDOWN
@@ -159,6 +158,44 @@ def get_stat_by_day(user_id, action_list, first_date, second_date):
         first_date += timedelta(1)
     return message
 
+def stat_friend(i,friends, user_id):
+    user_id_friend= int(friends[i])
+
+    today= date.today()
+    monday= date.today()- timedelta(days= date.today().weekday())
+    first_day= date(year=date.today().year, month=date.today().month, day=1)
+    days_in_month = calendar.monthrange(year=date.today().year, month=date.today().month)[1]
+    old= db.first_log(user_id_friend)[0].split('-')
+    old_date_friend=  date(year=int(old[0]), month=int(old[1]), day=int(old[2]))
+    old= db.first_log(user_id)[0].split('-')
+    old_date=date(year=int(old[0]), month=int(old[1]), day=int(old[2]))
+    week= [monday, monday+timedelta(weeks=1)]
+    month= [first_day, first_day+timedelta(days=days_in_month)]
+    all_friend= [old_date_friend, today]
+    all= [old_date, today]
+
+    today_friend=db.stat_short_today(user_id=user_id_friend) if db.stat_short_today(user_id=user_id_friend) != None else [0,0]
+    today_me=db.stat_short_today(user_id=user_id) if db.stat_short_today(user_id=user_id_friend) != None else [0,0]
+    
+    stat_week_friend= db.get_short_stat(user_id=user_id_friend, first_date= week[0], second_date= week[1]) if db.get_short_stat(user_id=user_id_friend, first_date= week[0], second_date= week[1]) != tuple([None, None]) else [0,0]
+    stat_week= db.get_short_stat(user_id=user_id, first_date= week[0], second_date= week[1]) if db.get_short_stat(user_id=user_id, first_date= week[0], second_date= week[1]) != tuple([None, None]) else [0,0]
+    
+    stat_month_friend= db.get_short_stat(user_id=user_id_friend, first_date= month[0], second_date= month[1]) if db.get_short_stat(user_id=user_id_friend, first_date= month[0], second_date= month[1]) != tuple([None, None]) else [0,0]
+    stat_month= db.get_short_stat(user_id=user_id, first_date= month[0], second_date= month[1]) if db.get_short_stat(user_id=user_id, first_date= month[0], second_date= month[1]) != tuple([None, None]) else [0,0]
+
+    stat_all_friend= db.get_short_stat(user_id=user_id_friend, first_date= all_friend[0], second_date= all_friend[1]) if db.get_short_stat(user_id=user_id_friend, first_date= all_friend[0], second_date= all_friend[1]) != tuple([None, None]) else [0,0]
+    stat_all= db.get_short_stat(user_id=user_id, first_date= all[0], second_date= all[1]) if db.get_short_stat(user_id=user_id, first_date= all[0], second_date= all[1]) != tuple([None, None]) else [0,0]
+    
+    message=f"""
+🙋 @{db.get_user_name(user_id_friend)[0]}
+Day 🕝{today_friend[0]} / ⭐️{today_friend[1]} (you: 🕝{today_me[0]} / ⭐️{today_me[1]})
+Week 🕝{stat_week_friend[0]} / ⭐️{stat_week_friend[1]} (you: 🕝{stat_week[0]} / ⭐️{stat_week[1]})
+Month 🕝{stat_month_friend[0]} / ⭐️{stat_month_friend[1]} (you: 🕝{stat_month[0]} / ⭐️{stat_month[1]})
+All 🕝{stat_all_friend[0]} / ⭐️{stat_all_friend[1]} (you: 🕝{stat_all[0]} / ⭐️{stat_all[1]})
+"""
+    return message
+
+
 @dp.message_handler(commands=['start'], state=Focus.all_states)
 @dp.message_handler(commands=['start'])
 async def start_message(message: types.Message, state: FSMContext):
@@ -178,9 +215,36 @@ async def friends_message(message: types.Message, state: FSMContext):
     if db.user_info(user_id=message.chat.id)[3] == None:
         await message.answer(f"You don't have any friends yet. Add them!", reply_markup=nav.add_friends_button)
     else: 
-        pass
+        friends= db.get_friends(user_id= message.chat.id)[0].split(',')
+        await message.answer(text=stat_friend(i=0, friends=friends, user_id=message.chat.id))
+
+@dp.callback_query_handler(text= 'friend')
+async def friend_answer(call: types.CallbackQuery, state: FSMContext):
+    await call.message.answer("Write a friend's username (example: '@my_best_friend')")
+    await Focus.Q5.set()
     
-    
+@dp.message_handler(content_types=['text'], state=Focus.Q5)
+async def q5_answer(message: types.Message, state: FSMContext):
+    user_id= db.find_id(user_name=message.text)
+    if user_id == None:
+        await message.answer(f"Friend not found!\nPlease, write username who using this bot!!!")
+        await Focus.Q5.set()
+    else:
+        await message.answer(f"✅ Ready! @{message.text} has received a friend request and needs to confirm it. After confirmation, the friend will appear in the friends section", reply_markup=nav.friends_menu)
+        await bot.send_message(chat_id=user_id, text=f"🙋 @{message.chat.username} wants to add you to friends. If you agree, you will be able to see each other's stats.", reply_markup=nav.friends_menu)
+        await state.finish()
+        
+@dp.callback_query_handler(text_contains= 'friend_')
+async def friend_answer(call: types.CallbackQuery, state: FSMContext):
+    if call.data== 'friend_show':
+        if db.user_info(user_id=call.message.chat.id)[3] == None:
+            await call.message.answer(f"You don't have any friends yet. Add them!", reply_markup=nav.add_friends_button)
+    else: 
+        friends= db.get_friends(user_id= call.message.chat.id)[0].split(',')
+    if call.data== 'friend_add':
+        await call.message.answer("Write a friend's username (example: '@my_best_friend')")
+        await Focus.Q5.set()
+
 @dp.message_handler(commands=['focus'], state=Focus.all_states)
 @dp.message_handler(commands=['focus'])
 async def start_message(message: types.Message, state: FSMContext):
@@ -467,7 +531,7 @@ async def answer_message(call: types.CallbackQuery, state: FSMContext):
     split_= call.data.split('_')[2]
     await state.update_data(day=day_)
     await state.update_data(split=split_)
-    await call.message.edit_text(f"Select  activity 🏄‍♂️", reply_markup=nav.choose_action_menu(list_actions=actions))
+    await call.message.edit_text(f"Select  activity 🏄‍♂️", reply_markup=nav.choose_action_menu(list_actions=actions, user_id=call.message.chat.id))
 
 @dp.callback_query_handler(text_contains= 'choose_')
 async def answer_message(call: types.CallbackQuery, state: FSMContext):
@@ -531,12 +595,12 @@ async def answer_message(call: types.CallbackQuery, state: FSMContext):
     elif call.data == 'choose_reset':
         actions_list.clear()
         await state.update_data(actions=actions_list)
-        await call.message.edit_text(f"Select  activity 🏄‍♂️", reply_markup=nav.choose_action_menu(list_actions=[]))
+        await call.message.edit_text(f"Select  activity 🏄‍♂️", reply_markup=nav.choose_action_menu(list_actions=[], user_id=call.message.chat.id))
     else:
         action= call.data.split('_')[1]
         actions_list.append(action)
         await state.update_data(actions=actions_list)
-        await call.message.edit_text(f"Select  activity 🏄‍♂️", reply_markup=nav.choose_action_menu(list_actions=actions_list))
+        await call.message.edit_text(f"Select  activity 🏄‍♂️", reply_markup=nav.choose_action_menu(list_actions=actions_list, user_id=call.message.chat.id))
               
 #Notification
 async def every_mon():
