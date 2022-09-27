@@ -1,4 +1,3 @@
-from ast import Delete
 from db import Database
 import config as cfg
 import keyboard as nav
@@ -130,6 +129,7 @@ def get_stat_by_week(user_id, actions_list, first_date, second_date):
         first_date += timedelta(weeks=1)
     sort_top= sorted(top.items(), key=lambda x: x[1].get('point'), reverse=True)
     for key in top:
+        prise= ""
         point= 0 if zero_point is True else int(top[key]['point'])
         if point != 0:
             if sort_top[0][0] == key and sort_top[0][1].get('point') == top[key].get('point') and sort_top[0][1].get('point') != 0:
@@ -224,13 +224,14 @@ def get_stat_by_day(user_id, action_list, first_date, second_date):
         first_date += timedelta(1)
     sort_top= sorted(top.items(), key=lambda x: x[1].get('point'), reverse=True)
     for key in top:
+        prise= ""
         point= 0 if zero_point is True else int(top[key]['point'])
         if point != 0:
-            if sort_top[0][0] == key and sort_top[0][1].get('point') == top[key].get('point'):
+            if sort_top[0][0] == key and sort_top[0][1].get('point') == top[key].get('point') and top[key].get('point') != 0:
                 prise= "🥇" 
-            elif sort_top[1][0] == key and sort_top[1][1].get('point') == top[key].get('point'):
+            elif sort_top[1][0] == key and sort_top[1][1].get('point') == top[key].get('point') and top[key].get('point') != 0:
                 prise= "🥈"
-            elif sort_top[2][0] == key and sort_top[2][1].get('point') == top[key].get('point'):
+            elif sort_top[2][0] == key and sort_top[2][1].get('point') == top[key].get('point') and top[key].get('point') != 0:
                 prise= "🥉"
             else:
                 prise= ""
@@ -245,6 +246,20 @@ def get_stat_by_day(user_id, action_list, first_date, second_date):
 def stat_friend(i,friends, user_id):
     user_id_friend= int(friends[i])
 
+    count_skip= db.user_info(user_id)[2]
+    user_cat=db.get_user_cat(user_id)
+    zero_point= False
+    star= True if user_cat.__contains__(('Extremely', )) or user_cat.__contains__(('High', )) or user_cat.__contains__(('Medium', )) or user_cat.__contains__(('Low', )) else False
+    if (count_skip > 0 and count_skip < 8) and star is True:
+        categories= True
+        zero_point= True
+    elif count_skip == 0:
+        categories= True
+        zero_point= False
+    else:
+        categories =False
+    
+    
     today= date.today()
     monday= date.today()- timedelta(days= date.today().weekday())
     first_day= date(year=date.today().year, month=date.today().month, day=1)
@@ -281,14 +296,34 @@ def stat_friend(i,friends, user_id):
     
     all_fr= '&lt;1' if stat_all_friend[0] > 0 and stat_all_friend[0] < 1 else int(stat_all_friend[0])
     all_me= '&lt;1' if stat_all[0] > 0 and stat_all[0] < 1 else int(stat_all[0])
-    message=f"""
+    
+    if categories is True:
+        if zero_point is True:   
+            message=f"""
 🙋 @{db.get_user_name(user_id_friend)[0]}
 Day 🕝{today_hour_fr} / ⭐️{int(today_friend[1])} (you: 🕝{today_hour_me} / ⭐️{int(today_me[1])})
 Week 🕝{week_fr} / ⭐️{int(stat_week_friend[1])} (you: 🕝{week_me} / ⭐️{int(stat_week[1])})
 Month 🕝{month_fr} / ⭐️{int(stat_month_friend[1])} (you: 🕝{month_me} / ⭐️{int(stat_month[1])})
 All 🕝{all_fr} / ⭐️{int(stat_all_friend[1])} (you: 🕝{all_me} / ⭐️{int(stat_all[1])})
 """
+        else:
+            message=f"""
+🙋 @{db.get_user_name(user_id_friend)[0]}
+Day 🕝{today_hour_fr} / ⭐️{int(today_friend[1])} (you: 🕝{today_hour_me} / ⭐️0)
+Week 🕝{week_fr} / ⭐️{int(stat_week_friend[1])} (you: 🕝{week_me} / ⭐️0)
+Month 🕝{month_fr} / ⭐️{int(stat_month_friend[1])} (you: 🕝{month_me} / ⭐️0)
+All 🕝{all_fr} / ⭐️{int(stat_all_friend[1])} (you: 🕝{all_me} / ⭐️0)
+"""
+    else:
+                message=f"""
+🙋 @{db.get_user_name(user_id_friend)[0]}
+Day 🕝{today_hour_fr} (you: 🕝{today_hour_me})
+Week 🕝{week_fr} (you: 🕝{week_me})
+Month 🕝{month_fr} (you: 🕝{month_me})
+All 🕝{all_fr} (you: 🕝{all_me})
+"""
     return message
+
 
 
 @dp.message_handler(commands=['start'], state=Focus.all_states)
@@ -569,7 +604,6 @@ async def q1_answer(message: types.Message, state: FSMContext):
             await message.answer(f"Please, don't type this symbol: '<, >, &' ")
             await Focus.Q1.set()
     
-    
 @dp.callback_query_handler(text_contains= 'act_', state=Focus.Q1)
 async def act_answer(call: types.CallbackQuery, state: FSMContext):
     act= call.data.split('_')[1]
@@ -644,8 +678,8 @@ async def rec_answer(call: types.CallbackQuery, state: FSMContext):
         point= multi * time
         hour= '&lt;0.1' if time < 0.1 and time > 0 else time
         if type(hour) == float:
-            if hours == 1.2:
-                hours= 1.2
+            if hour == 1.2:
+                hour= 1.2
             elif int(hour) >= 1:
                 hour= (floor((hour- int(hour)) * 10))/10+ int(hour)
             else:
@@ -777,7 +811,6 @@ async def q1_answer(message: types.Message, state: FSMContext):
 @dp.callback_query_handler(text_contains= 'foc_') 
 @dp.callback_query_handler(text_contains= 'foc_', state=Focus.all_states)
 async def answer_message(call: types.CallbackQuery, state: FSMContext):
-    await call.message.delete_reply_markup()
     await state.finish()
     if call.data.__contains__( 'foc_del'):
         key= call.data.split('_')[2]
@@ -1007,6 +1040,11 @@ async def answer_message(call: types.CallbackQuery, state: FSMContext):
         actions_list.clear()
         await state.update_data(actions=actions_list)
         await call.message.edit_text(f"Select  activity 🏄‍♂️", reply_markup=nav.choose_action_menu(list_actions=[], user_id=call.message.chat.id))
+    elif call.data.split('_')[1] == 'ex':
+        action= call.data.split('_')[2]
+        actions_list.remove(action)
+        await state.update_data(actions=actions_list)
+        await call.message.edit_text(f"Select  activity 🏄‍♂️", reply_markup=nav.choose_action_menu(list_actions=actions_list, user_id=call.message.chat.id))
     else:
         action= call.data.split('_')[1]
         actions_list.append(action)
@@ -1052,8 +1090,20 @@ async def scheduler():
         await aioschedule.run_pending()
         await asyncio.sleep(1)
 
+async def set_default_commands(dp):
+    await dp.bot.set_my_commands(
+        [
+            types.BotCommand('start', 'Restart bot'),
+            types.BotCommand('stat', 'Your stats'),
+            types.BotCommand('focus', 'Log activity'),
+            types.BotCommand('friend', 'Your friends'),
+        ]
+    )
+
 async def notification(_):
+    await set_default_commands(dp)
     asyncio.create_task(scheduler())
+    
 
 
 

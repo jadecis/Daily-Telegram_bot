@@ -128,7 +128,7 @@ def choose_action_menu(list_actions, user_id):
     actions.sort(key=str.__len__)
     for action in actions:
         if list(list_actions).__contains__(action):
-            act = InlineKeyboardButton(f'{action} ✔', callback_data='choose_'+str(action))
+            act = InlineKeyboardButton(f'{action} ✔', callback_data='choose_ex_'+str(action))
         else:
             act = InlineKeyboardButton(f'{action}', callback_data='choose_'+str(action))
         if len(action) >= 20:
