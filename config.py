@@ -1,2 +1,2 @@
-TOKEN= ''
+TOKEN= '5626592898:AAGb-12_bEh-q0xWZl6hJNFZy4TuKB5ueWM'
 name_bot = ''
